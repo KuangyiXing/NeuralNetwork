@@ -1,0 +1,31 @@
+function y = assignment1_3layers(x)
+data = csvread('fertility.csv')   %read the csv
+inputs = data(:,1:end-1)'
+outputs = data(:,end)'
+CVO = cvpartition (outputs(1,:), 'k', 10);  % 10th cross-validation
+err = zeros(CVO.NumTestSets,1);
+for i = 1:CVO.NumTestSets
+    trIdx = CVO.training(i);
+    teIdx = CVO.test(i);
+    train_inputs = inputs(:,trIdx);
+    train_outputs = outputs(:,trIdx);
+    test_inputs = inputs(:,teIdx);
+    test_outputs = outputs(:,teIdx);
+    train_outputs = bsxfun(@eq,train_outputs(:),[0,1])';  %create two class classification output
+    test_outputs = bsxfun(@eq,test_outputs(:),[0,1])';   %create two class claasification output
+    net = network(1,3,[1;1;1],[1;0;0],[0 0 0;1 0 0;0 1 0],[0 0 1]);   %the network has one input, three layers, each layer has bias, each layer is only fully connected to following layer
+    net.layers{1}.size = x(1);  % the first variable
+    net.layers{2}.size = x(2);  %the second variable
+    net.layers{3}.size = 2;   %the input size is 2
+    net.inputs{1}.size = 9;   %the output layer size is 9
+    net.layers{1}.transferFcn = 'logsig';  %each layer's transferring function is logsig
+    net.layers{2}.transferFcn = 'logsig';
+    net.layers{3}.transferFcn = 'logsig';
+    net.trainFcn = 'trainlm';     %the network training function is trainlm
+    net = train(net, train_inputs, train_outputs);   %train the net
+    y = net(test_inputs);  %y is the actual output
+    y = vec2ind(y);   %transfer vectors into indix
+    test_outputs = vec2ind(test_outputs); %transfer desired output vectors into indix
+    err(i) = sum(y~=test_outputs)/length(test_outputs);  %compare the actual output and desired output and calculate the error
+end
+y = sum(err)/CVO.NumTestSets; %summary the error after ten loops
